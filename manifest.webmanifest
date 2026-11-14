@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Ovoz o‘zgartirgich",
+  "short_name": "Ovoz",
+  "description": "Ovozni yozish, yo‘g‘onlashtirish va ingichkalashtirish uchun bepul dastur",
+  "lang": "uz",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1324",
+  "theme_color": "#19243a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -5,8 +5,25 @@ Object.assign(translations,{"Ovoz yozing yoki audio fayl yuklang. Ovozni yo‘g�
 const langs={uz:'O‘zbekcha',en:'English',ru:'Русский',tr:'Türkçe',es:'Español'};
 const native=new WeakMap();let active='uz',busy=false;
 function getLanguage(){try{const saved=localStorage.getItem('ovozstudio-language');if(langs[saved])return saved}catch(e){}const l=(navigator.language||'uz').split('-')[0].toLowerCase();return langs[l]?l:'en'}
-function translate(source){if(active==='uz')return source;const key=source.trim();if(!key)return source;let t=translations[key]?.[active];if(!t){const numbered=key.match(/^(\\d+\\.\\s*)(.+)$/);if(numbered&&translations[numbered[2]])t=numbered[1]+(translations[numbered[2]][active]||numbered[2]);}if(!t){for(const k of Object.keys(translations).sort((a,b)=>b.length-a.length)){if(key===k||key.startsWith(k+':')){t=translations[k][active]+key.slice(k.length);break}if(key.endsWith(' '+k)){t=key.slice(0,-k.length)+translations[k][active];break}}}return t?source.replace(key,t):source}
-function visit(root){if(root.nodeType===3){if(!root.parentElement||/^(SCRIPT|STYLE|TEXTAREA)$/.test(root.parentElement.tagName))return;const original=native.get(root)||root.nodeValue;if(!native.has(root))native.set(root,original);const output=translate(original);if(root.nodeValue!==output)root.nodeValue=output;return}if(root.nodeType!==1)return;if(root.closest&&root.closest('#languageControl'))return;if(root.matches('input,textarea,select,button,canvas')){for(const attr of ['placeholder','aria-label','title']){if(root.hasAttribute(attr)){const id='__orig_'+attr;const original=root[id]||root.getAttribute(attr);root[id]=original;const val=translate(original);if(root.getAttribute(attr)!==val)root.setAttribute(attr,val)}}}for(const child of Array.from(root.childNodes))visit(child)}
+const translationKeys=Object.keys(translations).sort((a,b)=>b.length-a.length);
+function translate(source){
+ if(active==='uz'||!source)return source;
+ const key=source.trim().replace(/\\s+/g,' ');
+ if(!key)return source;
+ const direct=translations[key]?.[active];
+ if(direct)return source.replace(source.trim(),direct);
+ const numbered=key.match(/^(\\d+\\.\\s*)(.+)$/);
+ if(numbered&&translations[numbered[2]]?.[active])return source.replace(source.trim(),numbered[1]+translations[numbered[2]][active]);
+ let result=source;
+ for(const k of translationKeys){
+  const target=translations[k]?.[active];if(!target)continue;
+  if(result.includes(k)){result=result.split(k).join(target);continue}
+  const compact=k.replace(/\\s+/g,' ');
+  if(key===compact)return source.replace(source.trim(),target);
+ }
+ return result;
+}
+function visit(root){if(root.nodeType===3){if(!root.parentElement||/^(SCRIPT|STYLE|TEXTAREA)$/.test(root.parentElement.tagName))return;const original=native.has(root)?native.get(root):root.nodeValue;if(!native.has(root))native.set(root,original);const output=translate(original);if(root.nodeValue!==output)root.nodeValue=output;return}if(root.nodeType!==1)return;if(root.closest&&root.closest('#languageControl'))return;if(root.matches('input,textarea,select,button,canvas')){for(const attr of ['placeholder','aria-label','title']){if(root.hasAttribute(attr)){const id='__orig_'+attr;const original=root[id]||root.getAttribute(attr);root[id]=original;const val=translate(original);if(root.getAttribute(attr)!==val)root.setAttribute(attr,val)}}}for(const child of Array.from(root.childNodes))visit(child)}
 function apply(){busy=true;document.documentElement.lang=active;document.title=active==='uz'?'Ovoz Studio':({en:'Voice Studio',ru:'Студия голоса',tr:'Ses Stüdyosu',es:'Estudio de voz'})[active];visit(document.querySelector('main.app')||document.body);busy=false}
 function install(){const wrap=document.createElement('div');wrap.id='languageControl';wrap.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end;margin:0 0 14px;flex-wrap:wrap';const label=document.createElement('label');label.textContent='🌐';label.htmlFor='siteLanguage';label.setAttribute('aria-label','Language / Til');const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','Choose language');select.style.cssText='background:#213959;color:#fff;border:1px solid #6688b8;border-radius:10px;padding:10px 12px;font:600 15px system-ui;min-height:44px';for(const [code,name] of Object.entries(langs)){const o=document.createElement('option');o.value=code;o.textContent=name;select.append(o)}active=getLanguage();select.value=active;select.addEventListener('change',()=>{active=select.value;try{localStorage.setItem('ovozstudio-language',active)}catch(e){}apply()});wrap.append(label,select);(document.querySelector('main.app')||document.body).prepend(wrap);apply();const obs=new MutationObserver(m=>{if(busy)return;for(const item of m){if(item.type==='characterData'){const n=item.target;if(n.parentElement&&!n.parentElement.closest('#languageControl')){const original=n.nodeValue;const prev=native.get(n);if(prev!==original&&original!==translate(prev||''))native.set(n,original)}}else for(const n of item.addedNodes){if(n.nodeType===3)native.set(n,n.nodeValue)}}apply()});obs.observe(document.querySelector('main.app')||document.body,{childList:true,characterData:true,subtree:true});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
